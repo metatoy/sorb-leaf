@@ -1,0 +1,49 @@
+{
+  "name": "@metatoy/sorb-leaf",
+  "version": "1.2.0",
+  "description": "React provider for Sorb design tokens — the foliage rendered in your running app",
+  "license": "MIT",
+  "keywords": [
+    "sorb",
+    "design-tokens",
+    "figma",
+    "react",
+    "tokens"
+  ],
+  "homepage": "https://github.com/metatoy/sorb-leaf#readme",
+  "bugs": "https://github.com/metatoy/sorb-leaf/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/metatoy/sorb-leaf.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "node build.mjs",
+    "dev": "node build.mjs --watch",
+    "prepublishOnly": "node build.mjs"
+  },
+  "dependencies": {
+    "@metatoy/sorb-core": "^0.1.0"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.21.0",
+    "react": "^18.0.0"
+  }
+}
