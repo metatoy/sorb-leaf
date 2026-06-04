@@ -1,16 +1,16 @@
-# @metatoy/sorb-leaf
+# @sorb/leaf
 
 React provider for [Sorb](https://github.com/nhunsaker/sorb) design
 tokens. Ships in your app bundle — zero runtime dependencies beyond React.
 
 ```bash
-npm install @metatoy/sorb-leaf
+npm install @sorb/leaf
 ```
 
 ## Usage
 
 ```jsx
-import { SorbProvider, PreviewBanner } from '@metatoy/sorb-leaf'
+import { SorbProvider, PreviewBanner } from '@sorb/leaf'
 import { tokens } from './tokens/generated/tokens'
 
 const config = {
@@ -44,7 +44,7 @@ breaks production.
 ## Hooks
 
 ```jsx
-import { useToken, useTokens, useIsPreview, usePreviewState } from '@metatoy/sorb-leaf'
+import { useToken, useTokens, useIsPreview, usePreviewState } from '@sorb/leaf'
 
 const primary = useToken('color-primary')          // single token value
 const tokens = useTokens()                          // full active token set

@@ -1,4 +1,4 @@
-// Type definitions for @metatoy/sorb-leaf, expressed as JSDoc typedefs.
+// Type definitions for @sorb/leaf, expressed as JSDoc typedefs.
 // These carry no runtime code — they exist purely for editor tooling and docs.
 
 /**
