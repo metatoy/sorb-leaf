@@ -1,6 +1,23 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { TokenContext } from './context'
 import { applyTokens } from './apply'
+import { shouldLoadPreview } from './previewGuard'
+
+/**
+ * Dev-only warning that never throws in a browser (no `process` global there).
+ * @param {string} msg
+ * @returns {void}
+ */
+const devWarn = (msg) => {
+  try {
+    if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV !== 'production') {
+      // eslint-disable-next-line no-console
+      console.warn(`[sorb] ${msg}`)
+    }
+  } catch (e) {
+    void e
+  }
+}
 
 /**
  * @param {{ config: import('./types').SorbConfig, children: React.ReactNode }} props
@@ -22,7 +39,15 @@ export const SorbProvider = ({ config, children }) => {
   // ─── preview token loader ─────────────────────────────────────────────────
   const loadPreview = useCallback(
     async (id) => {
-      const origin = config.preview?.origin ?? 'http://localhost:7777'
+      // Re-check the guard here too: loadPreview must never fetch an
+      // untrusted origin even if called directly. Use the guard-resolved
+      // origin, not the raw config, so the trust decision is single-sourced.
+      const guard = shouldLoadPreview(config)
+      if (!guard.allowed) {
+        loadCommitted()
+        return false
+      }
+      const origin = guard.origin
       try {
         const res = await fetch(`${origin}/preview/${id}`)
         if (!res.ok) throw new Error('preview not found')
@@ -32,14 +57,15 @@ export const SorbProvider = ({ config, children }) => {
         setIsPreview(true)
         setPreviewId(id)
         return true
-      } catch {
+      } catch (e) {
         // local server not running, preview expired, or network error
         // fall back silently — never break the app
+        void e
         loadCommitted()
         return false
       }
     },
-    [config.preview?.origin, loadCommitted],
+    [config, loadCommitted],
   )
 
   // ─── clear preview + remove query param ──────────────────────────────────
@@ -54,11 +80,19 @@ export const SorbProvider = ({ config, children }) => {
 
   // ─── initialise on mount ──────────────────────────────────────────────────
   useEffect(() => {
-    const previewEnabled = config.preview?.enabled ?? false
+    const guard = shouldLoadPreview(config)
     const id = new URLSearchParams(location.search).get('preview')
 
-    // bail out immediately if preview is disabled or no param present
-    if (!previewEnabled || !id) {
+    // Preview only runs when the origin-allowlist guard says so (C3). A stray
+    // `?preview=` on a production deploy against an untrusted origin is ignored
+    // — we load committed tokens and dev-warn instead.
+    if (!guard.allowed || !id) {
+      if (id && !guard.allowed) {
+        devWarn(
+          `ignoring ?preview= — preview not permitted (${guard.reason ?? 'blocked'}); ` +
+            'loading committed tokens',
+        )
+      }
       loadCommitted()
       return
     }

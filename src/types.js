@@ -16,7 +16,12 @@
  *   Whether to allow preview mode at all. Set to false in production builds.
  *   e.g. `enabled: process.env.NODE_ENV !== 'production'`
  * @property {string} [origin]
- *   Where the local Sorb CLI is running. Defaults to http://localhost:7777
+ *   Where the local Sorb CLI is running. Defaults to http://localhost:7777.
+ *   Only localhost/127.0.0.1/[::1] origins (any port) are trusted by default;
+ *   any other origin must be listed in `allowedOrigins` or preview is blocked.
+ * @property {string[]} [allowedOrigins]
+ *   Extra exact origins (e.g. a staging bridge) to trust in addition to
+ *   localhost. Never enable preview against an untrusted origin in production.
  * @property {number} [pollInterval]
  *   How often to poll for token updates while a preview is active,
  *   in milliseconds. Defaults to 1500.
