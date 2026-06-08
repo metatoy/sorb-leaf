@@ -25,6 +25,13 @@ export { injectModeStylesheet, clearModeStylesheet, MODE_STYLESHEET_ID } from '.
 // early) can pass one straight into `config.darkModeConvention`.
 export { tailwindDarkMode, dataThemeDarkMode } from './darkModeConventions'
 
+// Legacy-React adapter shim (roadmap §6) — the runtime DOM overlay that remaps
+// hardcoded literals to `var(--cssVar, raw)` using an adapt-report's `auto`
+// rows. `SorbProvider` wires these internally via its `legacyMap` prop; also
+// exported for consumers driving the shim directly.
+export { applyLegacyMap, clearLegacyMap } from './legacyDom'
+export { computeLegacyOverride, indexLegacyMap, normalizeProp, normalizeValue } from './legacyMap'
+
 // Side-effect import: registers the `react-bootstrap` TargetAdapter (the
 // default connector — spec/sorb/connectors-architecture.md §3.3/§4 C3) into
 // the `@sorb/core` connector registry as soon as `@sorb/leaf` loads. Also

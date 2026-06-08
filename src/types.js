@@ -68,6 +68,31 @@
  */
 
 /**
+ * A single row of the legacy-map shim — a subset of the engine's `auto` row
+ * from `.sorb/adapt-report.json` (roadmap §6). The full engine row also carries
+ * `file`/`loc`/`tokenId`/`confidence`/`candidates`/`status`; the runtime shim
+ * only consumes `{ raw, prop, cssVar }`, so any `auto` row is a valid LegacyMapRow.
+ *
+ * @typedef {Object} LegacyMapRow
+ * @property {string} raw
+ *   The original hardcoded value as authored, e.g. "#0F65EF" or "4px". Doubles
+ *   as the `var()` fallback so removing the provider restores it exactly.
+ * @property {string} prop
+ *   The CSS property the value applies to, e.g. "background" or "borderRadius"
+ *   (camelCase or kebab-case both accepted).
+ * @property {string} cssVar
+ *   The target token's custom-property name WITHOUT the leading `--`,
+ *   e.g. "button-primary-bg-default".
+ */
+
+/**
+ * Opaque handle returned by `applyLegacyMap`, passed to `clearLegacyMap` to
+ * restore the original inline styles. Internal shape may change.
+ * @typedef {Object} LegacyMapHandle
+ * @property {Array<{ el: HTMLElement, prop: string, prev: string }>} restores
+ */
+
+/**
  * @typedef {Object} SorbConfig
  * @property {string} namespace Your app or design system namespace.
  * @property {TokenSet} tokens
@@ -103,6 +128,11 @@
  * @property {string} [cloudBase]
  *   Override the sorb-cloud base URL used for org-key resolution. Defaults
  *   to `connection.js`'s `DEFAULT_CLOUD_BASE`. Mainly for tests/staging.
+ * @property {LegacyMapRow[]} [legacyMap]
+ *   Legacy-React adapter shim: the `auto` rows from `.sorb/adapt-report.json`.
+ *   When present, after committed tokens are applied the provider remaps any
+ *   element whose hardcoded computed style matches a row's `raw` to
+ *   `var(--<cssVar>, <raw>)` — non-destructive, reversible on unmount.
  */
 
 /**

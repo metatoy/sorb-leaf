@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react'
 import { TokenContext } from './context'
 import { sorbInit, warnedDeprecations } from './core'
+import { applyLegacyMap, clearLegacyMap } from './legacyDom'
 
 // Re-exported for back-compat — `warnedDeprecations` isn't part of the
 // public `@sorb/leaf` surface (not in `src/index.js`) but lived on this
@@ -28,10 +29,21 @@ const DARK_MEDIA_QUERY = '(prefers-color-scheme: dark)'
  * StrictMode double-invoke safety — matches the original implementation,
  * which did all its DOM work in a mount-only effect too.
  *
- * @param {{ config: import('./types').SorbConfig, children: React.ReactNode }} props
+ * The optional `legacyMap` (Legacy-React adapter, roadmap §6) is an ADDITIVE,
+ * non-destructive DOM overlay layered on top of the shell — it never touches
+ * `sorbInit`. When present, after tokens apply it remaps any element whose
+ * hardcoded literal matches a row's `raw` to `var(--<cssVar>, <raw>)`, and
+ * restores the originals on unmount.
+ *
+ * @param {{
+ *   config: import('./types').SorbConfig,
+ *   legacyMap?: import('./types').LegacyMapRow[],
+ *   children: React.ReactNode,
+ * }} props
  */
-export const SorbProvider = ({ config, children }) => {
+export const SorbProvider = ({ config, legacyMap, children }) => {
   const instanceRef = useRef(null)
+  const legacyHandleRef = useRef(null)
   const [state, setState] = React.useState(() => ({
     tokens: config.tokens,
     isPreview: false,
@@ -40,6 +52,9 @@ export const SorbProvider = ({ config, children }) => {
     mode: 'auto',
     resolvedScheme: matchMediaFn ? (matchMediaFn(DARK_MEDIA_QUERY).matches ? 'dark' : 'light') : 'light',
   }))
+
+  // legacyMap prop wins over config.legacyMap; either enables the shim.
+  const resolvedLegacyMap = legacyMap ?? config.legacyMap ?? null
 
   useEffect(() => {
     const instance = sorbInit(config)
@@ -56,6 +71,26 @@ export const SorbProvider = ({ config, children }) => {
     // reinitialize the connection).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // ─── legacy-map shim (roadmap §6) ─────────────────────────────────────────
+  // Additive overlay on top of the sorbInit shell: after tokens are applied
+  // (and on every token change, so previews remap too), walk the DOM and remap
+  // any hardcoded literal that matches a legacyMap row to `var(--cssVar, raw)`.
+  // Restore on cleanup so removing the provider — or unmounting — returns the
+  // original inline values.
+  useEffect(() => {
+    if (!resolvedLegacyMap || resolvedLegacyMap.length === 0) return undefined
+    if (typeof document === 'undefined') return undefined
+    // restore any prior overrides before re-applying against the new tokens
+    if (legacyHandleRef.current) clearLegacyMap(legacyHandleRef.current)
+    legacyHandleRef.current = applyLegacyMap(document.body, resolvedLegacyMap)
+    return () => {
+      if (legacyHandleRef.current) {
+        clearLegacyMap(legacyHandleRef.current)
+        legacyHandleRef.current = null
+      }
+    }
+  }, [resolvedLegacyMap, state.tokens])
 
   const setMode = useCallback((next) => {
     if (instanceRef.current) instanceRef.current.setMode(next)
