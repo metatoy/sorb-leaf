@@ -41,6 +41,32 @@ properties on `:root`, and polls for live updates. If the server isn't
 running it falls back silently to the committed tokens — preview never
 breaks production.
 
+## Security
+
+Sorb injects externally-authored token values into your running app, so the
+SDK treats every value and preview origin as untrusted input.
+
+- **Value sanitization.** Every token value is validated before it is written
+  to `:root`. Values containing `url(...)`, `image-set(...)`, `expression(...)`,
+  `@import`, `javascript:`, raw `;`/`{`/`}`, or any non-allowlisted CSS function
+  are **skipped** (the rest still apply). This neutralizes CSS-exfil and
+  defacement via a hostile token. The check is exported as `sanitizeCssValue`.
+- **Preview is off by default and origin-allowlisted.** `?preview=` is honored
+  only when `preview.enabled === true` **and** the resolved `preview.origin` is
+  localhost / `127.0.0.1` / `[::1]` (any port) or is listed in
+  `preview.allowedOrigins`. A stray `?preview=` on a production deploy against an
+  untrusted bridge is ignored. **Never enable preview in production against an
+  untrusted bridge origin.**
+
+```jsx
+preview: {
+  enabled: import.meta.env.MODE !== 'production',
+  origin: 'http://localhost:7777',
+  // optional: trust an additional exact origin (e.g. a staging bridge)
+  allowedOrigins: ['https://staging-bridge.example.com'],
+}
+```
+
 ## Hooks
 
 ```jsx

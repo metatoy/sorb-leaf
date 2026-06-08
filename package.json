@@ -33,6 +33,7 @@
   "sideEffects": false,
   "scripts": {
     "build": "node build.mjs",
+    "test": "node --test",
     "dev": "node build.mjs --watch",
     "prepublishOnly": "node build.mjs"
   },
