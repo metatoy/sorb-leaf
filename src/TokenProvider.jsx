@@ -21,6 +21,28 @@ const devWarn = (msg) => {
   }
 }
 
+// Tracks which deprecated token ids have already been warned this session.
+export const warnedDeprecations = new Set()
+
+function warnDeprecated(resolved) {
+  if (typeof process !== 'undefined' && process.env.NODE_ENV === 'production') return
+  for (let i = 0; i < resolved.length; i++) {
+    const token = resolved[i]
+    if (!token.deprecated) continue
+    if (warnedDeprecations.has(token.id)) continue
+    warnedDeprecations.add(token.id)
+    const replacedBy =
+      token.replacedBy ||
+      (token.$extensions && token.$extensions.sorb && token.$extensions.sorb.replacedBy) ||
+      null
+    if (replacedBy) {
+      console.warn('[@sorb/leaf] Deprecated token: ' + token.id + ' — use ' + replacedBy + ' instead')
+    } else {
+      console.warn('[@sorb/leaf] Deprecated token: ' + token.id + ' is deprecated')
+    }
+  }
+}
+
 /**
  * @param {{ config: import('./types').SorbConfig, children: React.ReactNode }} props
  */
@@ -102,6 +124,8 @@ export const SorbProvider = ({ config, children }) => {
 
   // ─── initialise on mount ──────────────────────────────────────────────────
   useEffect(() => {
+    if (config.resolved && config.resolved.length) warnDeprecated(config.resolved)
+
     const guard = shouldLoadPreview(config)
     const id = new URLSearchParams(location.search).get('preview')
 

@@ -40,11 +40,28 @@
  */
 
 /**
+ * A resolved token with full metadata, as produced by sorb-seed.
+ * The optional `deprecated` / `replacedBy` fields are only present when the
+ * DTCG source carries `$deprecated: true` / `$extensions.sorb.replacedBy`.
+ * @typedef {Object} ResolvedToken
+ * @property {string}  id
+ * @property {string}  cssVar
+ * @property {*}       value
+ * @property {string}  tier
+ * @property {string}  type
+ * @property {true}    [deprecated]
+ * @property {string}  [replacedBy]
+ */
+
+/**
  * @typedef {Object} SorbConfig
  * @property {string} namespace Your app or design system namespace.
  * @property {TokenSet} tokens
  *   Committed token set — bundled at build time. Always used in production.
  *   Used as fallback if preview fails.
+ * @property {ResolvedToken[]} [resolved]
+ *   Full resolved token array from sorb-seed output. When provided, SorbProvider
+ *   will emit a dev-mode console.warn for any token flagged as deprecated.
  * @property {PreviewConfig} [preview]
  *   Preview configuration. Omit or set enabled: false to disable entirely.
  */
