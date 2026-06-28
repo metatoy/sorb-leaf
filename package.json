@@ -1,6 +1,6 @@
 {
   "name": "@sorb/leaf",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "React provider for Sorb design tokens — the foliage rendered in your running app",
   "license": "MIT",
   "keywords": [
