@@ -11,6 +11,8 @@
 // throwing (safe to call from a server-rendered component's effect). `fetch` is
 // injectable for tests.
 
+import { bridgeHeaders } from './bridgeAuth.js'
+
 /** Normalize a token name to a `--cssVar`. */
 const toCssVar = (name) => {
   const s = String(name).trim()
@@ -27,10 +29,12 @@ const toCssVar = (name) => {
  * reason:'provider-not-applied' }` rather than a misleading mismatch.
  *
  * @param {string[]} tokens  Token names or `--cssVar`s to check (e.g. `'button-primary-bg-default'`).
- * @param {{ origin?: string, fetch?: typeof globalThis.fetch }} [opts]
+ * @param {{ origin?: string, key?: string, fetch?: typeof globalThis.fetch }} [opts]
+ *   `key` is the hosted-bridge bearer key (`config.preview.key`). Omit for the
+ *   no-auth localhost bridge — no `Authorization` header is then sent.
  * @returns {Promise<{ok:boolean, reason?:string, checked?:number, matched?:number, mismatches?:Array<{cssVar:string,expected:any,got:any}>, unknown?:string[], error?:string}>}
  */
-export const verifyResolved = async (tokens, { origin = 'http://localhost:7777', fetch: fetchImpl } = {}) => {
+export const verifyResolved = async (tokens, { origin = 'http://localhost:7777', key, fetch: fetchImpl } = {}) => {
   if (typeof document === 'undefined' || !document.documentElement) {
     return { ok: false, reason: 'no-dom' }
   }
@@ -58,7 +62,8 @@ export const verifyResolved = async (tokens, { origin = 'http://localhost:7777',
   try {
     const res = await f(`${base}/verify/app`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      // Hosted bridge needs the bearer key; localhost (no key) sends no header.
+      headers: bridgeHeaders(key, { 'Content-Type': 'application/json' }),
       body: JSON.stringify({ values }),
     })
     if (!res.ok) {

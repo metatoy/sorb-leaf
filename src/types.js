@@ -20,8 +20,14 @@
  *   Only localhost/127.0.0.1/[::1] origins (any port) are trusted by default;
  *   any other origin must be listed in `allowedOrigins` or preview is blocked.
  * @property {string[]} [allowedOrigins]
- *   Extra exact origins (e.g. a staging bridge) to trust in addition to
- *   localhost. Never enable preview against an untrusted origin in production.
+ *   Extra exact origins (e.g. a staging or hosted bridge) to trust in addition
+ *   to localhost. Never enable preview against an untrusted origin in production.
+ * @property {string} [key]
+ *   Bearer key for a hosted bridge (Sorb Cloud). When set, preview/verify
+ *   requests send `Authorization: Bearer <key>`; when unset (localhost
+ *   `sorb dev`) no header is sent. Use a read-only publishable `sorb_pk_…` key
+ *   in anything distributable — supply it via env/config at deploy time, never
+ *   hardcoded in source.
  * @property {number} [pollInterval]
  *   How often to poll for token updates while a preview is active,
  *   in milliseconds. Defaults to 1500.

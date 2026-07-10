@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { TokenContext } from './context'
 import { applyTokens } from './apply'
 import { shouldLoadPreview } from './previewGuard'
+import { bridgeHeaders } from './bridgeAuth'
 
 /**
  * Dev-only warning that never throws in a browser (no `process` global there).
@@ -49,7 +50,12 @@ export const SorbProvider = ({ config, children }) => {
       }
       const origin = guard.origin
       try {
-        const res = await fetch(`${origin}/preview/${id}`)
+        // Hosted bridge needs `Authorization: Bearer <config.preview.key>`;
+        // when no key is configured (localhost `sorb dev`) NO header is sent
+        // and this call is unchanged.
+        const res = await fetch(`${origin}/preview/${id}`, {
+          headers: bridgeHeaders(config.preview?.key),
+        })
         if (!res.ok) throw new Error('preview not found')
         const tokens = await res.json()
         applyTokens(tokens)
