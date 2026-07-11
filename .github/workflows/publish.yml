@@ -17,7 +17,7 @@ jobs:
         with:
           node-version: 20
           registry-url: https://registry.npmjs.org
-      - run: npm install -g npm@latest   # OIDC trusted publishing needs npm >= 11.5.1
+      - run: npm install -g npm@^11.5.1  # OIDC trusted publishing needs npm >=11.5.1; 11.x still supports Node 20 (npm 12 dropped it)
       - run: npm install                 # leaf carries no per-package lockfile (workspace rule)
       - run: npm publish --access public --provenance
         # NO NODE_AUTH_TOKEN / NPM_TOKEN — OIDC handles auth entirely
