@@ -1,7 +1,9 @@
 # @sorb/leaf
 
-React provider for [Sorb](https://github.com/nhunsaker/sorb) design
-tokens. Ships in your app bundle — zero runtime dependencies beyond React.
+React SDK for Sorb, the design-token bridge for your running app — live-preview
+proposed tokens as CSS custom properties. (Leaf: the foliage in your app.)
+
+Ships in your app bundle — zero runtime dependencies beyond React.
 
 ```bash
 npm install @sorb/leaf
