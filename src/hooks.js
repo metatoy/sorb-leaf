@@ -37,10 +37,14 @@ export const useIsPreview = () => {
 /**
  * Returns full preview state — useful for building a preview banner.
  *
+ * `previewMismatch` is true when a preview loaded but its tokens don't match the
+ * app's `preview.expectPrefixes` (vocabulary mismatch — see B4); use it to render
+ * a warning state. Always false unless the guard is opted into.
+ *
  * @example
- * const { isPreview, previewId, clearPreview } = usePreviewState()
+ * const { isPreview, previewId, previewMismatch, clearPreview } = usePreviewState()
  */
 export const usePreviewState = () => {
-  const { isPreview, previewId, clearPreview } = useTokenContext()
-  return { isPreview, previewId, clearPreview }
+  const { isPreview, previewId, previewMismatch, clearPreview } = useTokenContext()
+  return { isPreview, previewId, previewMismatch, clearPreview }
 }

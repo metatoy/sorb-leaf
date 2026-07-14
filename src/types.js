@@ -31,6 +31,12 @@
  * @property {number} [pollInterval]
  *   How often to poll for token updates while a preview is active,
  *   in milliseconds. Defaults to 1500.
+ * @property {string[]} [expectPrefixes]
+ *   Vocabulary/contract guard (B4). Token-key prefixes this app actually
+ *   consumes (e.g. `['bs-']`). When set, a loaded preview that applies tokens
+ *   but matches NONE of these prefixes is flagged (`previewMismatch` context
+ *   state) and a console.warn is emitted — catching the silent-no-op where the
+ *   banner lights but nothing re-skins. Omit/empty ⇒ guard disabled (default).
  */
 
 /**
@@ -48,6 +54,10 @@
  * @property {TokenSet} tokens Currently active token set (committed or preview).
  * @property {boolean} isPreview True when a preview token set is loaded.
  * @property {string | null} previewId The active preview ID, or null.
+ * @property {boolean} previewMismatch
+ *   True when the active preview applied tokens but none matched the app's
+ *   `preview.expectPrefixes` (vocabulary mismatch — the app likely won't
+ *   re-skin). Always false when the guard is not opted into.
  * @property {() => void} clearPreview
  *   Clears the preview, removes the query param, loads committed tokens.
  */
