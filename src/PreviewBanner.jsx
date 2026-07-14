@@ -13,8 +13,19 @@ import { usePreviewState } from './hooks'
  * <PreviewBanner />
  */
 export const PreviewBanner = () => {
-  const { isPreview, previewId, clearPreview } = usePreviewState()
+  const { isPreview, previewId, previewMismatch, clearPreview } = usePreviewState()
   if (!isPreview) return null
+
+  // B4: on a vocabulary mismatch the preview is active but likely re-skins
+  // nothing — warn the viewer instead of showing a normal "live" banner. The
+  // warning colours are token-bindable (`--sorb-preview-warning-*`) with amber
+  // fallbacks so a consumer can theme them (e.g. to its own --bs-warning).
+  const background = previewMismatch
+    ? 'var(--sorb-preview-warning-bg, #B54708)'
+    : '#3B5BDB'
+  const accent = previewMismatch
+    ? 'var(--sorb-preview-warning-accent, #F59E0B)'
+    : 'transparent'
 
   return (
     <div
@@ -25,7 +36,8 @@ export const PreviewBanner = () => {
         bottom: 0,
         left: 0,
         right: 0,
-        background: '#3B5BDB',
+        background,
+        borderTop: `3px solid ${accent}`,
         color: '#fff',
         padding: '10px 20px',
         display: 'flex',
@@ -41,7 +53,9 @@ export const PreviewBanner = () => {
       }}
     >
       <span>
-        <strong style={{ fontWeight: 600 }}>Sorb preview active</strong>
+        <strong style={{ fontWeight: 600 }}>
+          {previewMismatch ? 'Sorb preview active — may not re-skin' : 'Sorb preview active'}
+        </strong>
         {previewId && (
           <code
             style={{
@@ -57,7 +71,9 @@ export const PreviewBanner = () => {
           </code>
         )}
         <span style={{ marginLeft: '8px', opacity: 0.75, fontSize: '12px' }}>
-          Token changes from Figma are live
+          {previewMismatch
+            ? 'No matching tokens for this app — colours may be unchanged'
+            : 'Token changes from Figma are live'}
         </span>
       </span>
       <button

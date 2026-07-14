@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { TokenContext } from './context'
 import { applyTokens } from './apply'
 import { shouldLoadPreview } from './previewGuard'
+import { checkPreviewVocabulary } from './previewVocab'
 import { bridgeHeaders } from './bridgeAuth'
 
 /**
@@ -27,6 +28,10 @@ export const SorbProvider = ({ config, children }) => {
   const [activeTokens, setActiveTokens] = useState(config.tokens)
   const [isPreview, setIsPreview] = useState(false)
   const [previewId, setPreviewId] = useState(null)
+  // B4 vocab guard: true when a loaded preview applied tokens but none matched
+  // the app's expected prefixes (`config.preview.expectPrefixes`). Always false
+  // when the guard is not opted into.
+  const [previewMismatch, setPreviewMismatch] = useState(false)
   const pollRef = useRef(null)
 
   // ─── committed token loader ───────────────────────────────────────────────
@@ -35,6 +40,7 @@ export const SorbProvider = ({ config, children }) => {
     setActiveTokens(config.tokens)
     setIsPreview(false)
     setPreviewId(null)
+    setPreviewMismatch(false)
   }, [config.tokens])
 
   // ─── preview token loader ─────────────────────────────────────────────────
@@ -62,6 +68,16 @@ export const SorbProvider = ({ config, children }) => {
         setActiveTokens(tokens)
         setIsPreview(true)
         setPreviewId(id)
+        // B4: warn (and flag) if the preview's keys don't intersect the
+        // namespace this app consumes — otherwise the banner lights but nothing
+        // on screen moves. No-op unless config.preview.expectPrefixes is set.
+        setPreviewMismatch(
+          checkPreviewVocabulary({
+            tokens,
+            expectPrefixes: config.preview?.expectPrefixes,
+            previewId: id,
+          }),
+        )
         return true
       } catch (e) {
         // local server not running, preview expired, or network error
@@ -116,7 +132,9 @@ export const SorbProvider = ({ config, children }) => {
   }, []) // intentionally empty — only runs on mount
 
   return (
-    <TokenContext.Provider value={{ tokens: activeTokens, isPreview, previewId, clearPreview }}>
+    <TokenContext.Provider
+      value={{ tokens: activeTokens, isPreview, previewId, previewMismatch, clearPreview }}
+    >
       {children}
     </TokenContext.Provider>
   )
