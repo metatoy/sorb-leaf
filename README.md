@@ -1,6 +1,6 @@
 # @sorb/leaf
 
-React SDK for Sorb, the design-token bridge for your running app — live-preview
+React SDK for Sorb™, the design-token bridge for your running app — live-preview
 proposed tokens as CSS custom properties. (Leaf: the foliage in your app.)
 
 Ships in your app bundle — zero runtime dependencies beyond React.
@@ -82,3 +82,7 @@ const { isPreview, previewId, clearPreview } = usePreviewState()
 
 See the [main README](https://github.com/nhunsaker/sorb#readme) for the
 full workflow.
+
+---
+
+**Sorb™** is a trademark of Metatoy LLC.
