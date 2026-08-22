@@ -17,7 +17,7 @@
 //       bridgeUrl: string,               // e.g. "https://bridge.sorbcloud.com"
 //       orgId?: string,                  // needed to build the SSE subscribe URL
 //       tokenSource?: string,
-//       previewPersistence?: { ttlMs?: number },
+//       previewPersistence?: boolean,
 //       transport?: 'sse' | 'poll',      // defaults to 'sse' when bridgeMode === 'A'
 //     }
 //   → non-2xx (unknown/revoked key, network error) → resolution returns `null`;
@@ -84,10 +84,10 @@ export const resolveOrgConnection = async (orgKey, opts) => {
       bridgeUrl: data.bridgeUrl,
       orgId: typeof data.orgId === 'string' ? data.orgId : null,
       tokenSource: typeof data.tokenSource === 'string' ? data.tokenSource : null,
+      // sorb-cloud's /api/orgs/resolve returns this as a boolean (entitlement
+      // flag), not an object — see cloud src/lib/orgResolve.ts.
       previewPersistence:
-        data.previewPersistence && typeof data.previewPersistence === 'object'
-          ? data.previewPersistence
-          : null,
+        typeof data.previewPersistence === 'boolean' ? data.previewPersistence : null,
       transport: data.transport === 'poll' || data.transport === 'sse' ? data.transport : bridgeMode === 'A' ? 'sse' : 'poll',
     }
   } catch (e) {

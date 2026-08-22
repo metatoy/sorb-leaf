@@ -63,7 +63,7 @@
  * @property {string} bridgeUrl The bridge origin to preview against.
  * @property {string|null} orgId Needed to build the SSE subscribe URL.
  * @property {string|null} tokenSource
- * @property {{ttlMs?: number}|null} previewPersistence
+ * @property {boolean|null} previewPersistence
  * @property {'sse'|'poll'} transport Which preview-update transport to use.
  */
 

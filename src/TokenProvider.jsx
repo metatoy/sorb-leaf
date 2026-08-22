@@ -207,6 +207,7 @@ export const SorbProvider = ({ config, children }) => {
           EventSourceImpl: EventSourceCtor,
           url,
           onTokens: (tokens) => applyPreviewTokens(tokens, id, effectiveConfig),
+          onDelete: () => loadCommitted(),
           onError: () => devWarn('SSE preview subscription error — preview may be stale'),
         })
       }

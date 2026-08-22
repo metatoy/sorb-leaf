@@ -55,6 +55,27 @@ test('parsePreviewFrame: parses a ping frame with no tokens field required', () 
   assert.deepEqual(parsePreviewFrame(JSON.stringify({ type: 'ping' })), { type: 'ping' })
 })
 
+test('parsePreviewFrame: parses a juice delete frame (tokens:null)', () => {
+  assert.deepEqual(parsePreviewFrame(JSON.stringify({ type: 'delete', tokens: null })), { type: 'delete', tokens: null })
+})
+
+test('createPreviewSubscription: delete frame fires onDelete, not onTokens', () => {
+  FakeEventSource.instances = []
+  let deleted = 0
+  const received = []
+  createPreviewSubscription({
+    EventSourceImpl: FakeEventSource,
+    url: 'https://bridge.sorbcloud.com/orgs/o/preview/p/subscribe',
+    onTokens: (t) => received.push(t),
+    onDelete: () => { deleted++ },
+  })
+  const es = FakeEventSource.instances[0]
+  es.emit(JSON.stringify({ type: 'snapshot', tokens: { a: 1 } }))
+  es.emit(JSON.stringify({ type: 'delete', tokens: null }))
+  assert.deepEqual(received, [{ a: 1 }])
+  assert.equal(deleted, 1)
+})
+
 test('parsePreviewFrame: unknown type → null', () => {
   assert.equal(parsePreviewFrame(JSON.stringify({ type: 'mystery' })), null)
 })

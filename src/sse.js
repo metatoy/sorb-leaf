@@ -45,7 +45,7 @@ export const buildSubscribeUrl = (bridgeUrl, orgId, previewId, key) => {
  * (never throw on an unexpected/future frame shape).
  *
  * @param {string} raw
- * @returns {{ type: 'snapshot'|'update', tokens: import('./types').TokenSet } | { type: 'ping' } | null}
+ * @returns {{ type: 'snapshot'|'update', tokens: import('./types').TokenSet } | { type: 'delete', tokens: null } | { type: 'ping' } | null}
  */
 export const parsePreviewFrame = (raw) => {
   let frame
@@ -57,6 +57,9 @@ export const parsePreviewFrame = (raw) => {
   }
   if (!frame || typeof frame !== 'object') return null
   if (frame.type === 'ping') return { type: 'ping' }
+  // juice emits a delete frame (tokens:null) when a preview is removed/expires
+  // server-side — the subscriber should revert to committed tokens.
+  if (frame.type === 'delete') return { type: 'delete', tokens: null }
   if ((frame.type === 'snapshot' || frame.type === 'update') && frame.tokens && typeof frame.tokens === 'object') {
     return { type: frame.type, tokens: frame.tokens }
   }
@@ -72,11 +75,12 @@ export const parsePreviewFrame = (raw) => {
  *   EventSourceImpl?: typeof EventSource,
  *   url: string,
  *   onTokens: (tokens: import('./types').TokenSet) => void,
+ *   onDelete?: () => void,
  *   onError?: (evt: unknown) => void,
  * }} opts
  * @returns {(() => void) | null}
  */
-export const createPreviewSubscription = ({ EventSourceImpl, url, onTokens, onError }) => {
+export const createPreviewSubscription = ({ EventSourceImpl, url, onTokens, onDelete, onError }) => {
   if (typeof EventSourceImpl !== 'function') return null
 
   const es = new EventSourceImpl(url)
@@ -84,6 +88,10 @@ export const createPreviewSubscription = ({ EventSourceImpl, url, onTokens, onEr
   es.onmessage = (evt) => {
     const parsed = parsePreviewFrame(evt && evt.data)
     if (!parsed || parsed.type === 'ping') return
+    if (parsed.type === 'delete') {
+      if (onDelete) onDelete()
+      return
+    }
     onTokens(parsed.tokens)
   }
 

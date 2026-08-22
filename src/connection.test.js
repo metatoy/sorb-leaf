@@ -72,7 +72,7 @@ test('resolveOrgConnection: happy path builds the assumed request + response sha
         bridgeUrl: 'https://bridge.sorbcloud.com',
         orgId: 'org_123',
         tokenSource: 'main',
-        previewPersistence: { ttlMs: 60000 },
+        previewPersistence: true,
       }),
     }
   })
@@ -85,7 +85,7 @@ test('resolveOrgConnection: happy path builds the assumed request + response sha
     bridgeUrl: 'https://bridge.sorbcloud.com',
     orgId: 'org_123',
     tokenSource: 'main',
-    previewPersistence: { ttlMs: 60000 },
+    previewPersistence: true,
     transport: 'sse',
   })
 })
