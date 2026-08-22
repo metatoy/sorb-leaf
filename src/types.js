@@ -54,6 +54,20 @@
  */
 
 /**
+ * The effective connection sorb-cloud resolved for an org/publishable key
+ * (E1 — hosted-bridge-modes, config-migration.md). See `src/connection.js`
+ * for the assumed `GET <cloudBase>/api/orgs/resolve?key=` contract — TODO,
+ * reconcile against the real sorb-cloud endpoint when it lands.
+ * @typedef {Object} ResolvedConnection
+ * @property {'A'|'B'|'C'|string} bridgeMode The org's configured bridge mode.
+ * @property {string} bridgeUrl The bridge origin to preview against.
+ * @property {string|null} orgId Needed to build the SSE subscribe URL.
+ * @property {string|null} tokenSource
+ * @property {{ttlMs?: number}|null} previewPersistence
+ * @property {'sse'|'poll'} transport Which preview-update transport to use.
+ */
+
+/**
  * @typedef {Object} SorbConfig
  * @property {string} namespace Your app or design system namespace.
  * @property {TokenSet} tokens
@@ -64,6 +78,20 @@
  *   will emit a dev-mode console.warn for any token flagged as deprecated.
  * @property {PreviewConfig} [preview]
  *   Preview configuration. Omit or set enabled: false to disable entirely.
+ *   An explicit `preview.origin` always wins over org-key resolution (below)
+ *   — this is today's file-mode / Mode C path and is never overridden.
+ * @property {string} [orgKey]
+ *   Org/publishable key (E1). Like an analytics SDK key: when set (and no
+ *   explicit `preview.origin` is pinned), SorbProvider resolves bridge
+ *   mode/url, token source, and preview persistence from sorb-cloud instead
+ *   of requiring a local `sorb.config.json`. Purely additive — omit for
+ *   today's file-mode behavior, unchanged.
+ * @property {string} [publishableKey]
+ *   Alias for `orgKey` — either field name works; `orgKey` is checked first
+ *   when both are set (see `getOrgKey` in `connection.js`).
+ * @property {string} [cloudBase]
+ *   Override the sorb-cloud base URL used for org-key resolution. Defaults
+ *   to `connection.js`'s `DEFAULT_CLOUD_BASE`. Mainly for tests/staging.
  */
 
 /**
