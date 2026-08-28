@@ -15,7 +15,7 @@
  * Component Compat Roadmap's `@sorb/leaf-core`/`@sorb/emit` extraction
  * (out of scope for this phase).
  */
-import { registerTarget } from '@sorb/core'
+import * as core from '@sorb/core'
 
 // The Style-Dictionary format id that emits this target's token set, from the
 // named-format registry (`sorb-demo/sd/sorb-format.js:30`):
@@ -38,6 +38,12 @@ export const reactBootstrapTarget = {
   inject: undefined,
 }
 
-registerTarget(reactBootstrapTarget)
+// Register into the @sorb/core registry WHEN this build's core supports it. The
+// published @sorb/core on npm can lag the connector contract (polyrepo publish
+// order); a namespace import + feature-detect keeps the esbuild build + runtime
+// working against an older published core (no "no matching export" / crash).
+if (typeof core.registerTarget === 'function') {
+  core.registerTarget(reactBootstrapTarget)
+}
 
 export default reactBootstrapTarget
