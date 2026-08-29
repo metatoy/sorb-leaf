@@ -36,6 +36,15 @@ export const reactBootstrapTarget = {
   expectPrefixes: ['bs-'],
   // Left undefined on purpose — see file header.
   inject: undefined,
+  // Bootstrap 5.3's native dark-mode convention (real-dark-mode spec D1): a
+  // `data-bs-theme` attribute on any ancestor (Bootstrap recommends
+  // `<html>`) selects the mode; absent ⇒ OS `prefers-color-scheme` governs.
+  darkMode: {
+    strategy: 'attribute',
+    attribute: 'data-bs-theme',
+    darkSelector: '[data-bs-theme="dark"]',
+    lightSelector: '[data-bs-theme="light"]',
+  },
 }
 
 // Register into the @sorb/core registry WHEN this build's core supports it. The

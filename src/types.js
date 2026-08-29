@@ -73,6 +73,17 @@
  * @property {TokenSet} tokens
  *   Committed token set — bundled at build time. Always used in production.
  *   Used as fallback if preview fails.
+ * @property {TokenSet} [darkTokens]
+ *   Committed DARK-mode token set (real-dark-mode spec D3) — same token ids
+ *   as `tokens`, dark values. When present, `SorbProvider` injects a
+ *   mode-aware `<style id="sorb-tokens">` stylesheet (`buildModeStylesheet`)
+ *   instead of the flat inline `applyTokens` path, and `setMode`/`useTheme`
+ *   become meaningful. Omit for a single-mode (light-only) app — unchanged,
+ *   byte-identical behavior to today.
+ * @property {import('@sorb/core').DarkModeConvention} [darkModeConvention]
+ *   Override the dark-mode convention used to build the mode-aware
+ *   stylesheet. Defaults to the `react-bootstrap` TargetAdapter's
+ *   `darkMode` (`data-bs-theme`) — override only for a non-default target.
  * @property {ResolvedToken[]} [resolved]
  *   Full resolved token array from sorb-seed output. When provided, SorbProvider
  *   will emit a dev-mode console.warn for any token flagged as deprecated.
@@ -105,6 +116,17 @@
  *   re-skin). Always false when the guard is not opted into.
  * @property {() => void} clearPreview
  *   Clears the preview, removes the query param, loads committed tokens.
+ * @property {'auto'|'light'|'dark'} mode
+ *   The current MANUAL mode selection (real-dark-mode spec D3). `'auto'`
+ *   (default) defers to the OS `prefers-color-scheme` via the injected media
+ *   query — no `data-bs-theme` attribute is set. `'light'`/`'dark'` are a
+ *   manual override that always wins (sets `data-bs-theme`).
+ * @property {(mode: 'auto'|'light'|'dark') => void} setMode
+ *   Change the manual mode selection.
+ * @property {'light'|'dark'} resolvedScheme
+ *   The scheme actually in effect right now: `mode` itself when it's
+ *   `'light'`/`'dark'`, otherwise the live-tracked OS
+ *   `prefers-color-scheme` result while `mode === 'auto'`.
  */
 
 export {}

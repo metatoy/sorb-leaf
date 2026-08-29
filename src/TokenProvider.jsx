@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { TokenContext } from './context'
-import { applyTokens } from './apply'
+import { applyTokens, injectModeStylesheet } from './apply'
+import { buildModeStylesheet } from './modeStylesheet'
+import { reactBootstrapTarget } from './targets/reactBootstrap'
 import { shouldLoadPreview } from './previewGuard'
 import { checkPreviewVocabulary } from './previewVocab'
 import { bridgeHeaders } from './bridgeAuth'
@@ -10,6 +12,22 @@ import { buildSubscribeUrl, createPreviewSubscription } from './sse'
 // EventSource only exists in browsers (and some polyfilled envs) — never
 // reference the bare global at module scope so this file stays node:test-safe.
 const EventSourceCtor = typeof EventSource !== 'undefined' ? EventSource : null
+
+// matchMedia only exists in browsers — same node:test-safety concern as
+// EventSource above.
+const matchMediaFn = typeof matchMedia !== 'undefined' ? matchMedia : null
+const DARK_MEDIA_QUERY = '(prefers-color-scheme: dark)'
+
+/**
+ * The data-bs-theme attribute name used for the manual mode override.
+ * Sourced from the active dark-mode convention (default: the
+ * `react-bootstrap` TargetAdapter) — falls back to `'data-bs-theme'` if a
+ * convention is passed without an explicit `attribute` (e.g. a future
+ * `'class'`-strategy target, out of v1 scope).
+ * @param {import('@sorb/core').DarkModeConvention | undefined} darkModeConvention
+ * @returns {string}
+ */
+const attributeName = (darkModeConvention) => darkModeConvention?.attribute || 'data-bs-theme'
 
 /**
  * Dev-only warning that never throws in a browser (no `process` global there).
@@ -62,14 +80,69 @@ export const SorbProvider = ({ config, children }) => {
   const [previewMismatch, setPreviewMismatch] = useState(false)
   const pollRef = useRef(null)
 
+  // ─── dark-mode state (real-dark-mode spec D3) ─────────────────────────────
+  // Only meaningful when config.darkTokens is set; a light-only config never
+  // touches this state's rendering path (back-compat gate).
+  const hasDarkMode = !!(config.darkTokens && Object.keys(config.darkTokens).length > 0)
+  const darkModeConvention = config.darkModeConvention || reactBootstrapTarget.darkMode
+  const [mode, setModeState] = useState('auto')
+  const [systemScheme, setSystemScheme] = useState(() =>
+    matchMediaFn ? (matchMediaFn(DARK_MEDIA_QUERY).matches ? 'dark' : 'light') : 'light',
+  )
+  const resolvedScheme = mode === 'auto' ? systemScheme : mode
+
+  // Sets the manual mode. 'light'/'dark' write the attribute (wins over OS);
+  // 'auto' removes it so the injected @media query governs. This listener's
+  // only job is to keep `systemScheme` (the JS-visible resolved value, e.g.
+  // for a UI indicator) in sync — the CSS itself always follows the OS via
+  // the media query the browser evaluates on its own; JS need not intervene.
+  const setMode = useCallback(
+    (next) => {
+      setModeState(next)
+      if (typeof document === 'undefined') return
+      const attr = attributeName(darkModeConvention)
+      if (next === 'auto') {
+        document.documentElement.removeAttribute(attr)
+      } else {
+        document.documentElement.setAttribute(attr, next)
+      }
+    },
+    [darkModeConvention],
+  )
+
+  useEffect(() => {
+    if (!matchMediaFn) return undefined
+    const mql = matchMediaFn(DARK_MEDIA_QUERY)
+    const onChange = (e) => setSystemScheme(e.matches ? 'dark' : 'light')
+    if (typeof mql.addEventListener === 'function') {
+      mql.addEventListener('change', onChange)
+      return () => mql.removeEventListener('change', onChange)
+    }
+    // Safari <14 fallback.
+    if (typeof mql.addListener === 'function') {
+      mql.addListener(onChange)
+      return () => mql.removeListener(onChange)
+    }
+    return undefined
+  }, [])
+
   // ─── committed token loader ───────────────────────────────────────────────
   const loadCommitted = useCallback(() => {
-    applyTokens(config.tokens)
+    if (hasDarkMode) {
+      // Dual-mode path: one mode-aware <style> tag carrying both value sets
+      // (spec D2/D3 contract) — never the flat inline applyTokens below.
+      injectModeStylesheet(buildModeStylesheet(config.tokens, config.darkTokens, darkModeConvention))
+    } else {
+      // Single-mode path: UNCHANGED from today — inline setProperty, no
+      // <style> tag. This is the back-compat gate (spec §3 D3): a
+      // light-only theme must render byte-identically to today.
+      applyTokens(config.tokens)
+    }
     setActiveTokens(config.tokens)
     setIsPreview(false)
     setPreviewId(null)
     setPreviewMismatch(false)
-  }, [config.tokens])
+  }, [config.tokens, config.darkTokens, hasDarkMode, darkModeConvention])
 
   // Shared by the fetch-based loader and the SSE push path — applies a
   // received token set as the active preview and runs the B4 vocab guard.
@@ -231,7 +304,16 @@ export const SorbProvider = ({ config, children }) => {
 
   return (
     <TokenContext.Provider
-      value={{ tokens: activeTokens, isPreview, previewId, previewMismatch, clearPreview }}
+      value={{
+        tokens: activeTokens,
+        isPreview,
+        previewId,
+        previewMismatch,
+        clearPreview,
+        mode,
+        setMode,
+        resolvedScheme,
+      }}
     >
       {children}
     </TokenContext.Provider>

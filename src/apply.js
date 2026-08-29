@@ -59,3 +59,51 @@ export const clearTokenOverrides = (tokens) => {
     root.style.removeProperty(`--${key}`)
   })
 }
+
+/** The id of the `<style>` tag {@link injectModeStylesheet} upserts. */
+export const MODE_STYLESHEET_ID = 'sorb-tokens'
+
+/**
+ * Upserts a `<style id="sorb-tokens">` tag in `<head>` carrying mode-aware
+ * CSS (real-dark-mode spec D3) — the injection path used when a theme has
+ * both a light and a dark value-set (see `buildModeStylesheet`,
+ * `./modeStylesheet.js`).
+ *
+ * DELIBERATELY SEPARATE from `applyTokens`/`clearTokenOverrides` (inline
+ * `style.setProperty`, above): those two stay untouched and are still what
+ * `TokenProvider` calls for a light-only theme, so a single-mode app's
+ * output is byte-identical to today (back-compat gate, spec §3 D3). This
+ * function is only reached when a theme actually has a dark mode — a
+ * `<style>` tag is required (not inline styles) because only a stylesheet
+ * can carry a `@media (prefers-color-scheme: dark)` block and
+ * attribute-selector rules; inline styles on `documentElement` can express
+ * neither.
+ *
+ * The `css` argument is expected to already be sanitized (`buildModeStylesheet`
+ * runs every value through `sanitizeCssValue` before it reaches here) — this
+ * function does no further validation, it only manages the tag's lifecycle.
+ *
+ * @param {string} css  CSS text, e.g. from `buildModeStylesheet(...)`.
+ * @returns {void}
+ */
+export const injectModeStylesheet = (css) => {
+  let tag = document.getElementById(MODE_STYLESHEET_ID)
+  if (!tag) {
+    tag = document.createElement('style')
+    tag.id = MODE_STYLESHEET_ID
+    document.head.appendChild(tag)
+  }
+  tag.textContent = css
+}
+
+/**
+ * Removes the `<style id="sorb-tokens">` tag injected by
+ * {@link injectModeStylesheet}, if present. Counterpart to
+ * `clearTokenOverrides` for the mode-aware (dual-mode) path.
+ *
+ * @returns {void}
+ */
+export const clearModeStylesheet = () => {
+  const tag = document.getElementById(MODE_STYLESHEET_ID)
+  if (tag && tag.parentNode) tag.parentNode.removeChild(tag)
+}

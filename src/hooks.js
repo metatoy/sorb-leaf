@@ -48,3 +48,21 @@ export const usePreviewState = () => {
   const { isPreview, previewId, previewMismatch, clearPreview } = useTokenContext()
   return { isPreview, previewId, previewMismatch, clearPreview }
 }
+
+/**
+ * Real-dark-mode (spec D3): the manual mode selection + the live-resolved
+ * scheme actually in effect.
+ *
+ * `mode` is meaningful for every app; `setMode('light'|'dark')` always
+ * works. It only visibly changes anything once the consumer's `SorbConfig`
+ * carries a `darkTokens` set (otherwise there's no dark stylesheet for the
+ * attribute toggle to select).
+ *
+ * @returns {{ mode: 'auto'|'light'|'dark', setMode: (mode: 'auto'|'light'|'dark') => void, resolvedScheme: 'light'|'dark' }}
+ * @example
+ * const { mode, setMode, resolvedScheme } = useTheme()
+ */
+export const useTheme = () => {
+  const { mode, setMode, resolvedScheme } = useTokenContext()
+  return { mode, setMode, resolvedScheme }
+}

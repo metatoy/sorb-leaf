@@ -18,3 +18,12 @@ test('react-bootstrap adapter shape matches the confirmed contract values', () =
   assert.ok(reactBootstrapTarget.expectPrefixes.includes('bs-'))
   assert.equal(reactBootstrapTarget.emitFormat, 'sorb/tokenset-esm')
 })
+
+test('react-bootstrap adapter carries the data-bs-theme darkMode convention', () => {
+  assert.deepEqual(reactBootstrapTarget.darkMode, {
+    strategy: 'attribute',
+    attribute: 'data-bs-theme',
+    darkSelector: '[data-bs-theme="dark"]',
+    lightSelector: '[data-bs-theme="light"]',
+  })
+})
