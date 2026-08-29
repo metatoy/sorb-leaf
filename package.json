@@ -25,6 +25,10 @@
     ".": {
       "import": "./dist/index.mjs",
       "require": "./dist/index.js"
+    },
+    "./core": {
+      "import": "./dist/core.mjs",
+      "require": "./dist/core.js"
     }
   },
   "files": [
@@ -38,7 +42,7 @@
     "prepublishOnly": "node build.mjs"
   },
   "dependencies": {
-    "@sorb/core": "^0.1.0"
+    "@sorb/core": "^0.2.0"
   },
   "peerDependencies": {
     "react": "^18.0.0"

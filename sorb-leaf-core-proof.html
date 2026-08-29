@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>@sorb/leaf-core proof — zero React</title>
+<style>
+  :root { --color-bg: #ffffff; --color-fg: #111111; --color-action-primary: #0f65ef; }
+  [data-theme="dark"] { --color-bg: #111111; --color-fg: #f5f5f5; --color-action-primary: #6ea8ff; }
+  body {
+    background: var(--color-bg);
+    color: var(--color-fg);
+    font-family: system-ui, sans-serif;
+    padding: 2rem;
+    transition: background 0.15s, color 0.15s;
+  }
+  button {
+    background: var(--color-action-primary);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 0.5rem 1rem;
+    margin-right: 0.5rem;
+    cursor: pointer;
+  }
+  #log { white-space: pre-wrap; font-family: monospace; font-size: 0.85rem; margin-top: 1rem; }
+</style>
+</head>
+<body>
+  <h1>@sorb/leaf-core proof</h1>
+  <p>Driven entirely by <code>sorbInit</code> from <code>dist/core.mjs</code> — <strong>no React</strong> anywhere in this page or its bundle (verified by grepping <code>dist/core.mjs</code> for a real <code>react</code> import/require — see report).</p>
+  <p id="swatch">Action color: <span id="swatch-value" style="color: var(--color-action-primary); font-weight: bold;">--color-action-primary</span></p>
+  <button id="btn-light">setMode('light')</button>
+  <button id="btn-dark">setMode('dark')</button>
+  <button id="btn-auto">setMode('auto')</button>
+  <div id="log"></div>
+
+  <script type="module">
+    import { sorbInit } from './dist/core.mjs'
+
+    const log = document.getElementById('log')
+    const print = (msg) => { log.textContent += msg + '\n' }
+
+    // Framework-free config — a committed light set + a dark override set,
+    // using the generic data-theme attribute convention (darkModeConventions.js's
+    // `dataThemeDarkMode` shape, inlined here since this page has zero build step).
+    const config = {
+      tokens: {
+        'color-bg': '#ffffff',
+        'color-fg': '#111111',
+        'color-action-primary': '#0f65ef',
+      },
+      darkTokens: {
+        'color-bg': '#111111',
+        'color-fg': '#f5f5f5',
+        'color-action-primary': '#6ea8ff',
+      },
+      darkModeConvention: {
+        strategy: 'attribute',
+        attribute: 'data-theme',
+        darkSelector: '[data-theme="dark"]',
+        lightSelector: '[data-theme="light"]',
+      },
+    }
+
+    const instance = sorbInit(config)
+
+    instance.subscribe((state) => {
+      print(`state: mode=${state.mode} resolvedScheme=${state.resolvedScheme} isPreview=${state.isPreview}`)
+    })
+
+    print('sorbInit() called — mode-aware <style id="sorb-tokens"> tag should now be in <head>.')
+    print('sorb-tokens tag present: ' + !!document.getElementById('sorb-tokens'))
+
+    document.getElementById('btn-light').addEventListener('click', () => instance.setMode('light'))
+    document.getElementById('btn-dark').addEventListener('click', () => instance.setMode('dark'))
+    document.getElementById('btn-auto').addEventListener('click', () => instance.setMode('auto'))
+
+    // Expose for a headless-Chromium assertion pass.
+    window.__sorbInstance = instance
+  </script>
+</body>
+</html>

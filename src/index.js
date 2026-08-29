@@ -1,4 +1,11 @@
 export { SorbProvider } from './TokenProvider'
+
+// The framework-free injector (component-compat-roadmap P0) — the same
+// entry `@sorb/leaf/core` re-exports for non-React hosts. Re-exported from
+// the main entry too so a consumer that only needs `sorbInit` (e.g. to
+// drive a preview outside React, or to share one instance across a mixed
+// tree) doesn't need the subpath import.
+export { sorbInit } from './core'
 export { PreviewBanner } from './PreviewBanner'
 export { useTokens, useToken, useIsPreview, usePreviewState, useTheme } from './hooks'
 export { ThemeToggle } from './ThemeToggle'
