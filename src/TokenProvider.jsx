@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { TokenContext } from './context'
-import { applyTokens, injectModeStylesheet } from './apply'
+import { applyTokens, clearTokenOverrides, injectModeStylesheet, clearModeStylesheet } from './apply'
 import { buildModeStylesheet } from './modeStylesheet'
 import { reactBootstrapTarget } from './targets/reactBootstrap'
 import { shouldLoadPreview } from './previewGuard'
@@ -8,6 +8,8 @@ import { checkPreviewVocabulary } from './previewVocab'
 import { bridgeHeaders } from './bridgeAuth'
 import { shouldResolveOrgConnection, getOrgKey, resolveOrgConnection, buildEffectiveConfig } from './connection'
 import { buildSubscribeUrl, createPreviewSubscription } from './sse'
+import { resolvePreviewBody } from './previewMode'
+import { resolveModeAction } from './modeAction'
 
 // EventSource only exists in browsers (and some polyfilled envs) — never
 // reference the bare global at module scope so this file stays node:test-safe.
@@ -91,20 +93,44 @@ export const SorbProvider = ({ config, children }) => {
   )
   const resolvedScheme = mode === 'auto' ? systemScheme : mode
 
-  // Sets the manual mode. 'light'/'dark' write the attribute (wins over OS);
-  // 'auto' removes it so the injected @media query governs. This listener's
-  // only job is to keep `systemScheme` (the JS-visible resolved value, e.g.
-  // for a UI indicator) in sync — the CSS itself always follows the OS via
-  // the media query the browser evaluates on its own; JS need not intervene.
+  // Sets the manual mode, honoring the active target's darkMode.strategy
+  // (P2a — multi-framework setMode):
+  //  - 'attribute' (v1 / react-bootstrap default): 'light'/'dark' write the
+  //    attribute (wins over OS); 'auto' removes it so the injected @media
+  //    query governs.
+  //  - 'class' (e.g. Tailwind's `.dark`): 'dark' adds the class; 'light' AND
+  //    'auto' both remove it — Tailwind's convention has no separate "light"
+  //    class, so a manual light choice cannot out-rank an OS dark preference
+  //    (see darkModeConventions.js's tailwindDarkMode doc comment).
+  //  - 'media': pure OS, no manual override possible — state is still
+  //    tracked (so `mode`/`resolvedScheme` stay accurate for a UI toggle
+  //    indicator) but the DOM is never touched.
+  // Either way this listener's only job (beyond the DOM write) is to keep
+  // `systemScheme` (the JS-visible resolved value) in sync — the CSS itself
+  // always follows the OS via the media query the browser evaluates on its
+  // own; JS need not intervene there.
   const setMode = useCallback(
     (next) => {
       setModeState(next)
       if (typeof document === 'undefined') return
-      const attr = attributeName(darkModeConvention)
-      if (next === 'auto') {
-        document.documentElement.removeAttribute(attr)
-      } else {
-        document.documentElement.setAttribute(attr, next)
+      const action = resolveModeAction(darkModeConvention, next)
+      switch (action.type) {
+        case 'attr-set':
+          document.documentElement.setAttribute(action.attribute, action.value)
+          break
+        case 'attr-remove':
+          document.documentElement.removeAttribute(action.attribute)
+          break
+        case 'class-add':
+          document.documentElement.classList.add(action.className)
+          break
+        case 'class-remove':
+          document.documentElement.classList.remove(action.className)
+          break
+        case 'none':
+        default:
+          // No manual override exists for a pure-media convention.
+          break
       }
     },
     [darkModeConvention],
@@ -126,41 +152,83 @@ export const SorbProvider = ({ config, children }) => {
     return undefined
   }, [])
 
+  // Tracks the token map currently written as INLINE `--x` custom properties
+  // via `applyTokens` (flat path — committed light-only OR a flat preview),
+  // so switching TO the mode-aware `<style>` path (`injectModeStylesheet`)
+  // can clear those stale inline overrides first. Inline styles always
+  // out-specificity a stylesheet rule, so leaving them behind would corrupt
+  // the injected dual-mode CSS (light/dark would silently freeze on whatever
+  // the last inline preview wrote). `null` when nothing is currently applied
+  // via the inline path (i.e. the mode-aware stylesheet is the live source).
+  const inlineTokensRef = useRef(null)
+
+  // Applies a flat token map via the ORIGINAL inline-`style.setProperty`
+  // path (`applyTokens`). Always clears any previously-injected mode-aware
+  // `<style id="sorb-tokens">` tag first — a no-op DOM query when nothing
+  // was ever injected, so this is byte-identical to today's behavior for a
+  // pure light-only app / legacy flat preview (back-compat gate).
+  const applyFlat = useCallback((tokens) => {
+    clearModeStylesheet()
+    applyTokens(tokens)
+    inlineTokensRef.current = tokens
+  }, [])
+
+  // Applies a mode-aware dual value-set via the `<style>`-tag injector
+  // (spec D2/D3 contract). Clears any stale inline overrides left by a
+  // prior flat apply first, so the stylesheet's rules aren't shadowed.
+  const applyModeAware = useCallback((lightTokens, darkTokens, convention) => {
+    if (inlineTokensRef.current) {
+      clearTokenOverrides(inlineTokensRef.current)
+      inlineTokensRef.current = null
+    }
+    injectModeStylesheet(buildModeStylesheet(lightTokens, darkTokens, convention))
+  }, [])
+
   // ─── committed token loader ───────────────────────────────────────────────
   const loadCommitted = useCallback(() => {
     if (hasDarkMode) {
       // Dual-mode path: one mode-aware <style> tag carrying both value sets
       // (spec D2/D3 contract) — never the flat inline applyTokens below.
-      injectModeStylesheet(buildModeStylesheet(config.tokens, config.darkTokens, darkModeConvention))
+      applyModeAware(config.tokens, config.darkTokens, darkModeConvention)
     } else {
       // Single-mode path: UNCHANGED from today — inline setProperty, no
       // <style> tag. This is the back-compat gate (spec §3 D3): a
       // light-only theme must render byte-identically to today.
-      applyTokens(config.tokens)
+      applyFlat(config.tokens)
     }
     setActiveTokens(config.tokens)
     setIsPreview(false)
     setPreviewId(null)
     setPreviewMismatch(false)
-  }, [config.tokens, config.darkTokens, hasDarkMode, darkModeConvention])
+  }, [config.tokens, config.darkTokens, hasDarkMode, darkModeConvention, applyModeAware, applyFlat])
 
   // Shared by the fetch-based loader and the SSE push path — applies a
-  // received token set as the active preview and runs the B4 vocab guard.
+  // received preview BODY (flat legacy map OR the mode-aware
+  // `{tokens, darkTokens?, darkMode?}` wrapper — phase 2 spec P2) as the
+  // active preview and runs the B4 vocab guard against its flat token view.
   const applyPreviewTokens = useCallback(
-    (tokens, id, effectiveConfig) => {
-      applyTokens(tokens)
-      setActiveTokens(tokens)
+    (body, id, effectiveConfig) => {
+      const resolved = resolvePreviewBody(body, darkModeConvention)
+      let flatTokens
+      if (resolved.kind === 'mode-aware') {
+        applyModeAware(resolved.lightTokens, resolved.darkTokens, resolved.darkMode)
+        flatTokens = resolved.lightTokens
+      } else {
+        applyFlat(resolved.tokens)
+        flatTokens = resolved.tokens
+      }
+      setActiveTokens(flatTokens)
       setIsPreview(true)
       setPreviewId(id)
       setPreviewMismatch(
         checkPreviewVocabulary({
-          tokens,
+          tokens: flatTokens,
           expectPrefixes: effectiveConfig.preview?.expectPrefixes,
           previewId: id,
         }),
       )
     },
-    [],
+    [darkModeConvention, applyModeAware, applyFlat],
   )
 
   // ─── preview token loader ─────────────────────────────────────────────────

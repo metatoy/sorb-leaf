@@ -95,3 +95,32 @@ test('empty lightVars still produces a valid (empty-bodied) :root block', () => 
   const css = buildModeStylesheet({}, null, undefined)
   assert.match(css, /:root \{\s*\}/)
 })
+
+// ─── class-strategy conventions (P2a — Tailwind's `.dark`) ─────────────────
+
+const tailwindDarkMode = { strategy: 'class', darkSelector: '.dark' }
+
+test('class-strategy: manual dark override selector is ".dark { ... }"', () => {
+  const css = buildModeStylesheet({ primary: '#fff' }, { primary: '#000' }, tailwindDarkMode)
+  assert.match(
+    css,
+    /\.dark \{\s*--primary: #000;\s*color-scheme: dark;\s*\}/,
+  )
+})
+
+test('class-strategy: no lightSelector ⇒ media guard is bare :root (no :not() clause), no light-override block', () => {
+  const css = buildModeStylesheet({ primary: '#fff' }, { primary: '#000' }, tailwindDarkMode)
+  assert.match(css, /@media \(prefers-color-scheme: dark\) \{\s*:root \{/)
+  assert.doesNotMatch(css, /:not\(/)
+  // exactly one class-selector rule (dark only) — no light-selector block
+  const classBlocks = css.match(/\.[a-z]+ \{/g) || []
+  assert.deepEqual(classBlocks, ['.dark {'])
+})
+
+test('class-strategy with a lightSelector: media guard scopes to :not(<lightSelector>)', () => {
+  const convention = { strategy: 'class', darkSelector: '.dark', lightSelector: '.light' }
+  const css = buildModeStylesheet({ a: '1' }, { a: '2' }, convention)
+  assert.match(css, /@media \(prefers-color-scheme: dark\) \{\s*:root:not\(\.light\) \{/)
+  assert.match(css, /\.dark \{\s*--a: 2;\s*color-scheme: dark;\s*\}/)
+  assert.match(css, /\.light \{\s*--a: 1;\s*color-scheme: light;\s*\}/)
+})

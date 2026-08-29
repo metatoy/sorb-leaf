@@ -11,6 +11,13 @@ export { verifyResolved } from './verify'
 export { buildModeStylesheet } from './modeStylesheet'
 export { injectModeStylesheet, clearModeStylesheet, MODE_STYLESHEET_ID } from './apply'
 
+// Reference darkMode conventions (real-dark-mode spec P2a) for adapters
+// beyond react-bootstrap — Tailwind's `.dark` class + a generic
+// `data-theme` attribute. Plain data (not registered TargetAdapters); export
+// them so a future Tailwind/data-theme connector (or a consumer building one
+// early) can pass one straight into `config.darkModeConvention`.
+export { tailwindDarkMode, dataThemeDarkMode } from './darkModeConventions'
+
 // Side-effect import: registers the `react-bootstrap` TargetAdapter (the
 // default connector — spec/sorb/connectors-architecture.md §3.3/§4 C3) into
 // the `@sorb/core` connector registry as soon as `@sorb/leaf` loads. Also
