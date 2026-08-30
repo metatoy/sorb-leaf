@@ -1,6 +1,6 @@
 {
   "name": "@sorb/leaf",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "React SDK for Sorb, the design-token bridge for your running app — live-preview proposed tokens as CSS custom properties. (Leaf: the foliage in your app.)",
   "license": "MIT",
   "keywords": [
@@ -42,7 +42,7 @@
     "prepublishOnly": "node build.mjs"
   },
   "dependencies": {
-    "@sorb/core": "^0.2.0"
+    "@sorb/core": "^0.3.0"
   },
   "peerDependencies": {
     "react": "^18.0.0"
