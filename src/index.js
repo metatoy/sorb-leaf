@@ -52,3 +52,16 @@ export { mantineTarget } from './targets/mantine'
 // re-exported for consumers that want to inspect the adapters directly.
 export { tailwindV4Target } from './targets/tailwindV4'
 export { shadcnTarget } from './targets/shadcn'
+
+// Side-effect import: registers the `primevue` TargetAdapter
+// (framework-targets-productization T4 — the first JS-emitting target
+// format) into the `@sorb/core` connector registry. Same feature-detect
+// posture as react-bootstrap above; also re-exported for consumers that
+// want to inspect the adapter directly.
+export { primevueTarget } from './targets/primevue'
+
+// Side-effect import: registers the `mui` TargetAdapter
+// (framework-targets-productization T3) into the `@sorb/core` connector
+// registry. Same feature-detect posture as react-bootstrap above; also
+// re-exported for consumers that want to inspect the adapter directly.
+export { muiTarget } from './targets/mui'
