@@ -65,3 +65,9 @@ export { primevueTarget } from './targets/primevue'
 // registry. Same feature-detect posture as react-bootstrap above; also
 // re-exported for consumers that want to inspect the adapter directly.
 export { muiTarget } from './targets/mui'
+
+// Side-effect import: registers the `angular-material` TargetAdapter
+// (framework-targets-productization T5) into the `@sorb/core` connector
+// registry. Same feature-detect posture as react-bootstrap above; also
+// re-exported for consumers that want to inspect the adapter directly.
+export { angularMaterialTarget } from './targets/angularMaterial'
