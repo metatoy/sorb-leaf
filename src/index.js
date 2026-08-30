@@ -39,3 +39,9 @@ export { computeLegacyOverride, indexLegacyMap, normalizeProp, normalizeValue } 
 // does NOT change `SorbProvider`'s or `applyTokens`' runtime behavior — both
 // still read `expectPrefixes` from `config`, not from the registry.
 export { reactBootstrapTarget } from './targets/reactBootstrap'
+
+// Side-effect import: registers the `mantine` TargetAdapter
+// (framework-targets-productization T2) into the `@sorb/core` connector
+// registry. Same feature-detect posture as react-bootstrap above; also
+// re-exported for consumers that want to inspect the adapter directly.
+export { mantineTarget } from './targets/mantine'
