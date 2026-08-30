@@ -45,3 +45,10 @@ export { reactBootstrapTarget } from './targets/reactBootstrap'
 // registry. Same feature-detect posture as react-bootstrap above; also
 // re-exported for consumers that want to inspect the adapter directly.
 export { mantineTarget } from './targets/mantine'
+
+// Side-effect imports: register the `tailwind-v4` + `shadcn` TargetAdapters
+// (framework-targets-productization T1) into the `@sorb/core` connector
+// registry. Same feature-detect posture as react-bootstrap above; also
+// re-exported for consumers that want to inspect the adapters directly.
+export { tailwindV4Target } from './targets/tailwindV4'
+export { shadcnTarget } from './targets/shadcn'
