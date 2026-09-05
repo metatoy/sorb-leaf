@@ -41,12 +41,18 @@ export const useIsPreview = () => {
  * app's `preview.expectPrefixes` (vocabulary mismatch — see B4); use it to render
  * a warning state. Always false unless the guard is opted into.
  *
+ * `previewError` is `{ id, outcome }` (`outcome`: `'not_found'|'unauthorized'|'network'`)
+ * when a deliberately-requested `?preview=` fetch failed and the SDK fell back to
+ * committed tokens — the case that used to be totally silent. `null` otherwise.
+ * A `not_found` typically means the preview id belongs to a different project
+ * than this app's key is bound to.
+ *
  * @example
- * const { isPreview, previewId, previewMismatch, clearPreview } = usePreviewState()
+ * const { isPreview, previewId, previewMismatch, previewError, clearPreview } = usePreviewState()
  */
 export const usePreviewState = () => {
-  const { isPreview, previewId, previewMismatch, clearPreview } = useTokenContext()
-  return { isPreview, previewId, previewMismatch, clearPreview }
+  const { isPreview, previewId, previewMismatch, previewError, clearPreview } = useTokenContext()
+  return { isPreview, previewId, previewMismatch, previewError, clearPreview }
 }
 
 /**

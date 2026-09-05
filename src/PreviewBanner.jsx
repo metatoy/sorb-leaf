@@ -1,32 +1,32 @@
 import React from 'react'
 import { usePreviewState } from './hooks'
+import { previewBannerModel } from './previewBannerModel'
 
 /**
- * Drop-in banner that appears at the bottom of the screen when a
- * Sorb preview is active. Includes an "Exit preview" button.
+ * Drop-in banner that appears at the bottom of the screen for a Sorb preview.
  *
- * Only renders when preview.enabled is true AND a preview is loaded.
- * Safe to include unconditionally — renders nothing in production.
+ * Renders in three states (see `previewBannerModel`):
+ *  - blue "active" — a healthy live preview,
+ *  - amber "mismatch" — preview active but likely re-skins nothing (B4),
+ *  - red "error" — a deliberately-requested `?preview=` couldn't be loaded (it
+ *    may belong to a different project). The error state renders even though
+ *    `isPreview` is false, since a failed preview falls back to committed
+ *    tokens (spec jj-demo-rebind-and-diagnosis D2 — kill the silent-404).
+ *
+ * Safe to include unconditionally — renders nothing when there's no preview and
+ * no preview error.
  *
  * @example
  * // In your app root, after <SorbProvider>
  * <PreviewBanner />
  */
 export const PreviewBanner = () => {
-  const { isPreview, previewId, previewMismatch, clearPreview } = usePreviewState()
-  if (!isPreview) return null
+  const { isPreview, previewId, previewMismatch, previewError, clearPreview } = usePreviewState()
+  const model = previewBannerModel({ isPreview, previewMismatch, previewError, previewId })
+  if (!model.visible) return null
 
-  // B4: on a vocabulary mismatch the preview is active but likely re-skins
-  // nothing — warn the viewer instead of showing a normal "live" banner. The
-  // warning colours are token-bindable (`--sorb-preview-warning-*`) with amber
-  // fallbacks so a consumer can theme them (e.g. to its own --bs-warning).
-  const background = previewMismatch
-    ? 'var(--sorb-preview-warning-bg, #B54708)'
-    : '#3B5BDB'
-  const accent = previewMismatch
-    ? 'var(--sorb-preview-warning-accent, #F59E0B)'
-    : 'transparent'
-
+  // Colours are token-bindable (`--sorb-preview-warning-*` / `--sorb-preview-error-*`)
+  // with fallbacks so a consumer can theme them (e.g. to its own --bs-warning).
   return (
     <div
       role="status"
@@ -36,8 +36,8 @@ export const PreviewBanner = () => {
         bottom: 0,
         left: 0,
         right: 0,
-        background,
-        borderTop: `3px solid ${accent}`,
+        background: model.background,
+        borderTop: `3px solid ${model.accent}`,
         color: '#fff',
         padding: '10px 20px',
         display: 'flex',
@@ -53,10 +53,8 @@ export const PreviewBanner = () => {
       }}
     >
       <span>
-        <strong style={{ fontWeight: 600 }}>
-          {previewMismatch ? 'Sorb preview active — may not re-skin' : 'Sorb preview active'}
-        </strong>
-        {previewId && (
+        <strong style={{ fontWeight: 600 }}>{model.title}</strong>
+        {model.id && (
           <code
             style={{
               marginLeft: '8px',
@@ -67,13 +65,11 @@ export const PreviewBanner = () => {
               borderRadius: '4px',
             }}
           >
-            {previewId}
+            {model.id}
           </code>
         )}
         <span style={{ marginLeft: '8px', opacity: 0.75, fontSize: '12px' }}>
-          {previewMismatch
-            ? 'No matching tokens for this app — colours may be unchanged'
-            : 'Token changes from Figma are live'}
+          {model.message}
         </span>
       </span>
       <button
@@ -97,7 +93,7 @@ export const PreviewBanner = () => {
           (e.target.style.background = 'rgba(255,255,255,0.2)')
         }
       >
-        Exit preview
+        {model.buttonLabel}
       </button>
     </div>
   )

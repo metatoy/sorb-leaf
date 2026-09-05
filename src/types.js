@@ -128,6 +128,15 @@
  * @property {string} [cloudBase]
  *   Override the sorb-cloud base URL used for org-key resolution. Defaults
  *   to `connection.js`'s `DEFAULT_CLOUD_BASE`. Mainly for tests/staging.
+ * @property {{ allowedOrigins?: string[] }} [diagnostics]
+ *   Diagnosis channel (spec jj-demo-rebind-and-diagnosis D2). The leaf answers
+ *   a `{ type:'sorb-ping' }` postMessage with a `sorb-hello` fingerprint
+ *   (namespace + key last4 + version + bridge origin + preview outcome) — but
+ *   ONLY when the ping's `event.origin` is allowlisted. Baked defaults are Sorb
+ *   Cloud's dashboard (`https://app.sorbcloud.com` + staging); set
+ *   `diagnostics.allowedOrigins` to extend the allowlist for a self-hosted
+ *   dashboard. The leaf never posts unsolicited and replies only to the exact
+ *   pinging origin — see `src/diagnostics.js`.
  * @property {LegacyMapRow[]} [legacyMap]
  *   Legacy-React adapter shim: the `auto` rows from `.sorb/adapt-report.json`.
  *   When present, after committed tokens are applied the provider remaps any
@@ -144,6 +153,12 @@
  *   True when the active preview applied tokens but none matched the app's
  *   `preview.expectPrefixes` (vocabulary mismatch — the app likely won't
  *   re-skin). Always false when the guard is not opted into.
+ * @property {{ id: string, outcome: 'not_found'|'unauthorized'|'network' }|null} previewError
+ *   Set when a deliberately-requested `?preview=` fetch failed and the SDK
+ *   silently fell back to committed tokens (the previously-invisible failure —
+ *   spec jj-demo-rebind-and-diagnosis D2). `outcome` classifies the HTTP/network
+ *   cause: `not_found` (404 — cross-tenant id or expired preview), `unauthorized`
+ *   (401/403), `network` (unreachable/parse). `null` on the normal path.
  * @property {() => void} clearPreview
  *   Clears the preview, removes the query param, loads committed tokens.
  * @property {'auto'|'light'|'dark'} mode

@@ -49,6 +49,7 @@ export const SorbProvider = ({ config, legacyMap, children }) => {
     isPreview: false,
     previewId: null,
     previewMismatch: false,
+    previewError: null,
     mode: 'auto',
     resolvedScheme: matchMediaFn ? (matchMediaFn(DARK_MEDIA_QUERY).matches ? 'dark' : 'light') : 'light',
   }))
@@ -105,6 +106,7 @@ export const SorbProvider = ({ config, legacyMap, children }) => {
       isPreview: state.isPreview,
       previewId: state.previewId,
       previewMismatch: state.previewMismatch,
+      previewError: state.previewError,
       clearPreview,
       mode: state.mode,
       setMode,

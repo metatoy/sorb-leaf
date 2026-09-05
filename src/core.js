@@ -20,6 +20,12 @@ import { shouldResolveOrgConnection, getOrgKey, resolveOrgConnection, buildEffec
 import { buildSubscribeUrl, createPreviewSubscription } from './sse.js'
 import { resolvePreviewBody } from './previewMode.js'
 import { resolveModeAction } from './modeAction.js'
+import {
+  LEAF_VERSION,
+  keyLast4,
+  resolveDiagnosticsOrigins,
+  createDiagnosticsResponder,
+} from './diagnostics.js'
 
 // EventSource/matchMedia only exist in browsers (and some polyfilled envs) —
 // never reference the bare global at module scope so this file stays
@@ -42,6 +48,27 @@ const devWarn = (msg) => {
   } catch (e) {
     void e
   }
+}
+
+/**
+ * Classify a failed preview fetch into a coarse outcome for `previewError` and
+ * the `sorb-hello` payload. Distinguishes tenant-scoping/expiry (`not_found`,
+ * the DXw1DDaJ case) from an auth problem (`unauthorized`) from a
+ * server-unreachable/parse failure (`network`). `res` is undefined when
+ * `fetch` itself rejected (no response arrived).
+ *
+ * NOTE (invariant 5): a cross-tenant id and a genuinely-expired id both read
+ * `not_found` here — identical to what the bridge reports (404-not-403) — so
+ * this reveals nothing about other tenants' preview existence.
+ *
+ * @param {Response|undefined} res
+ * @returns {'not_found'|'unauthorized'|'network'}
+ */
+export const classifyPreviewFailure = (res) => {
+  if (!res || typeof res.status !== 'number') return 'network'
+  if (res.status === 404) return 'not_found'
+  if (res.status === 401 || res.status === 403) return 'unauthorized'
+  return 'network'
 }
 
 // Tracks which deprecated token ids have already been warned this session.
@@ -75,6 +102,7 @@ function warnDeprecated(resolved) {
  *   isPreview: boolean,
  *   previewId: string|null,
  *   previewMismatch: boolean,
+ *   previewError: { id: string, outcome: 'not_found'|'unauthorized'|'network' }|null,
  *   mode: 'auto'|'light'|'dark',
  *   resolvedScheme: 'light'|'dark',
  * }} SorbState
@@ -106,9 +134,18 @@ export function sorbInit(config) {
   let isPreview = false
   let previewId = null
   let previewMismatch = false
+  let previewError = null
   let pollId = null
   let cancelled = false
   let unsubscribeSSE = null
+
+  // Diagnostics-channel state (spec D2). Hoisted to sorbInit scope so the
+  // `sorb-hello` snapshot can read the live effective config / bridge origin /
+  // requested preview id even though they're assigned inside async `init()`.
+  let effectiveConfig = config
+  let bridgeOrigin = null
+  let requestedPreviewId = null
+  let messageHandler = null
 
   const hasDarkMode = !!(config.darkTokens && Object.keys(config.darkTokens).length > 0)
   const darkModeConvention = config.darkModeConvention || reactBootstrapTarget.darkMode
@@ -122,6 +159,7 @@ export function sorbInit(config) {
     isPreview,
     previewId,
     previewMismatch,
+    previewError,
     mode,
     resolvedScheme: mode === 'auto' ? systemScheme : mode,
   })
@@ -174,6 +212,7 @@ export function sorbInit(config) {
     isPreview = false
     previewId = null
     previewMismatch = false
+    previewError = null
     notify()
   }
 
@@ -190,6 +229,7 @@ export function sorbInit(config) {
     activeTokens = flatTokens
     isPreview = true
     previewId = id
+    previewError = null
     previewMismatch = checkPreviewVocabulary({
       tokens: flatTokens,
       expectPrefixes: effectiveConfig.preview?.expectPrefixes,
@@ -206,8 +246,9 @@ export function sorbInit(config) {
       return false
     }
     const origin = guard.origin
+    let res
     try {
-      const res = await fetch(`${origin}/preview/${id}`, {
+      res = await fetch(`${origin}/preview/${id}`, {
         headers: bridgeHeaders(cfg.preview?.key),
       })
       if (!res.ok) throw new Error('preview not found')
@@ -215,10 +256,22 @@ export function sorbInit(config) {
       applyPreviewTokens(tokens, id, cfg)
       return true
     } catch (e) {
-      // local server not running, preview expired, or network error —
-      // fall back silently, never break the page.
+      // local server not running, preview expired, cross-tenant id, or network
+      // error — fall back silently to committed (never break the page), but
+      // record WHY so the banner + `sorb-hello` channel can surface it.
       void e
-      loadCommitted()
+      const outcome = classifyPreviewFailure(res)
+      loadCommitted() // silent fallback (clears previewError) …
+      previewError = { id, outcome } // … then stamp the failure and re-notify.
+      // Always-on (NOT dev-stripped) — fires only on a deliberate `?preview=`
+      // request, so the prod noise budget is one line per deliberate action.
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[@sorb/leaf] preview "${id}" could not be loaded (${outcome}) — it may not be ` +
+          "visible to this app's key; it may belong to a different project. " +
+          'Falling back to committed tokens.',
+      )
+      notify()
       return false
     }
   }
@@ -262,10 +315,44 @@ export function sorbInit(config) {
     notify()
   }
 
+  // ─── diagnostics channel (spec D2 — ping-only `sorb-hello`) ───────────────
+  // The live snapshot answered to an allowlisted `sorb-ping`. Reads current
+  // state so a ping that arrives after a failed preview still reports the real
+  // outcome. keyLast4 ONLY — never the full pk (invariant 3).
+  const previewOutcome = () => {
+    if (previewError) return previewError.outcome
+    if (isPreview) return 'ok'
+    return 'none'
+  }
+  const diagnosticsSnapshot = () => ({
+    namespace: config.namespace,
+    keyLast4: keyLast4(effectiveConfig.preview?.key || getOrgKey(config)),
+    leafVersion: LEAF_VERSION,
+    bridgeOrigin,
+    preview: { requestedId: requestedPreviewId, outcome: previewOutcome() },
+  })
+
+  // Register the message listener EARLY and UNCONDITIONALLY so a failed preview
+  // still answers pings. We never broadcast, so registering outside an iframe
+  // is harmless. Answers only allowlisted-origin `sorb-ping`s (see diagnostics.js).
+  const registerDiagnostics = () => {
+    if (messageHandler) return
+    if (typeof window === 'undefined' || typeof window.addEventListener !== 'function') return
+    messageHandler = createDiagnosticsResponder({
+      getSnapshot: diagnosticsSnapshot,
+      getAllowedOrigins: () => resolveDiagnosticsOrigins(config),
+    })
+    window.addEventListener('message', messageHandler)
+  }
+
   const destroy = () => {
     cancelled = true
     if (pollId) clearInterval(pollId)
     if (unsubscribeSSE) unsubscribeSSE()
+    if (messageHandler && typeof window !== 'undefined' && typeof window.removeEventListener === 'function') {
+      window.removeEventListener('message', messageHandler)
+      messageHandler = null
+    }
     if (mql) {
       if (typeof mql.removeEventListener === 'function') mql.removeEventListener('change', onSchemeChange)
       else if (typeof mql.removeListener === 'function') mql.removeListener(onSchemeChange)
@@ -276,7 +363,11 @@ export function sorbInit(config) {
   const init = async () => {
     if (config.resolved && config.resolved.length) warnDeprecated(config.resolved)
 
-    let effectiveConfig = config
+    // Answer diagnostics pings from the very start — before any async work —
+    // so a slow/failed connection resolve or preview fetch never leaves the
+    // listener unregistered (spec: "on both the success and failure paths").
+    registerDiagnostics()
+
     let resolvedConnection = null
     if (shouldResolveOrgConnection(config)) {
       resolvedConnection = await resolveOrgConnection(getOrgKey(config), {
@@ -287,7 +378,9 @@ export function sorbInit(config) {
     }
 
     const guard = shouldLoadPreview(effectiveConfig)
+    bridgeOrigin = guard.origin || effectiveConfig.preview?.origin || null
     const id = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('preview') : null
+    requestedPreviewId = id
 
     if (!guard.allowed || !id) {
       if (id && !guard.allowed) {
